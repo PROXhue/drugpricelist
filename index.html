@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lebanon Drug List – Bulk Claim Checker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--surface:#1e293b;--surface2:#162032;
+  --border:#2d3f55;--text:#e2e8f0;--muted:#94a3b8;
+  --blue:#3b82f6;--blue-dark:#2563eb;--green:#10b981;
+  --red:#ef4444;--radius:10px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:linear-gradient(135deg,#1a3a5c 0%,#0f172a 100%);padding:18px 30px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)}
+header .icon{font-size:26px}
+header h1{font-size:20px;font-weight:700;color:#60a5fa;letter-spacing:-0.3px}
+header p{font-size:12px;color:var(--muted);margin-top:2px}
+.badge{margin-left:auto;background:linear-gradient(135deg,#1d4ed8,#1e40af);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.5px;color:#bfdbfe}
+.container{max-width:1300px;margin:auto;padding:28px}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:48px 30px;text-align:center;background:var(--surface);cursor:pointer;position:relative;transition:border-color .2s,background .2s}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:#1a2d46}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-zone .upload-icon{font-size:40px;margin-bottom:12px}
+.upload-zone h3{font-size:16px;font-weight:600;margin-bottom:6px}
+.upload-zone p{color:var(--muted);font-size:13px}
+.status-bar{margin-top:16px;background:#0c2d1f;border:1px solid #134e36;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:12px}
+.dot{width:8px;height:8px;background:var(--green);border-radius:50%;flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-bar .info{flex:1;font-size:13px}
+.status-bar .info strong{color:var(--green)}
+.btn-sm{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .15s}
+.btn-sm:hover{border-color:var(--red);color:var(--red)}
+.search-box{margin-top:22px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.search-header{padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.5px}
+.search-inner{display:flex}
+textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;resize:none;padding:14px 16px;font-family:inherit;line-height:1.6}
+textarea::placeholder{color:#475569}
+.search-actions{display:flex;flex-direction:column;padding:12px;gap:8px;border-left:1px solid var(--border);min-width:140px}
+.btn-primary{background:var(--blue-dark);color:white;border:none;padding:10px 16px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s}
+.btn-primary:hover{background:var(--blue)}
+.mode-label{font-size:11px;color:var(--muted);text-align:center;margin-top:4px}
+.match-mode{display:flex;flex-direction:column;gap:4px}
+.mode-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;transition:all .15s;text-align:left}
+.mode-btn.active{background:#1d4ed8;border-color:#3b82f6;color:white}
+.tip{font-size:11px;color:#475569;padding:8px 16px;border-top:1px solid var(--border)}
+.results-section{margin-top:22px;display:none}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.results-title{font-size:14px;font-weight:600}
+.results-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.pill-green{background:#064e3b;color:#6ee7b7}
+.pill-blue{background:#1e3a5f;color:#93c5fd}
+.pill-yellow{background:#451a03;color:#fcd34d}
+.btn-export{background:#065f46;border:1px solid #134e36;color:#6ee7b7;padding:7px 16px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.btn-export:hover{background:#047857}
+.query-summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+.query-summary h4{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+.query-tags{display:flex;flex-wrap:wrap;gap:6px}
+.query-tag{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid}
+.query-tag.found{background:#0f291e;border-color:#166534;color:#86efac}
+.query-tag.not-found{background:#2c0a0a;border-color:#7f1d1d;color:#fca5a5}
+.query-tag .count{background:rgba(255,255,255,.12);padding:1px 6px;border-radius:10px;font-size:11px}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-scroll{overflow-x:auto;max-height:540px;overflow-y:auto}
+.table-scroll::-webkit-scrollbar{width:6px;height:6px}
+.table-scroll::-webkit-scrollbar-track{background:var(--surface2)}
+.table-scroll::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{position:sticky;top:0;z-index:10}
+thead th{background:#162032;padding:10px 14px;text-align:left;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border);white-space:nowrap}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:#192a3e}
+tbody tr:nth-child(even){background:rgba(255,255,255,.018)}
+tbody td{padding:9px 14px;border-bottom:1px solid #1a2535;vertical-align:top;max-width:260px;word-break:break-word;line-height:1.5;color:#cbd5e1}
+.matched-col{white-space:nowrap}
+.matched-badge{display:inline-flex;align-items:center;gap:3px;background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;margin:2px}
+mark{background:#78350f;color:#fde68a;padding:1px 3px;border-radius:3px;font-style:normal;font-weight:600}
+.no-results{text-align:center;padding:48px;color:var(--muted)}
+.no-results .icon{font-size:40px;margin-bottom:12px}
+footer{text-align:center;padding:20px;color:#334155;font-size:12px;margin-top:20px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="icon">💊</div>
+  <div>
+    <h1>Lebanon Drug List — Bulk Claim Checker</h1>
+    <p>Upload your monthly file, paste drug names or codes, and get instant matches</p>
+  </div>
+  <div class="badge">AI Powered</div>
+</header>
+<div class="container">
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".xls,.xlsx,.csv">
+    <div class="upload-icon">📂</div>
+    <h3>Drop your drug list file here</h3>
+    <p>Supports .xlsx / .xls / .csv &nbsp;·&nbsp; First sheet will be used</p>
+  </div>
+  <div class="status-bar hidden" id="statusBar">
+    <div class="dot"></div>
+    <div class="info">
+      <span id="fileName" style="font-weight:600"></span>
+      &nbsp;—&nbsp; <strong id="fileStats"></strong>
+    </div>
+    <button class="btn-sm" onclick="clearFile()">✕ Clear File</button>
+  </div>
+  <div class="search-box">
+    <div class="search-header">SEARCH DRUGS</div>
+    <div class="search-inner">
+      <textarea id="searchInput" rows="5" placeholder="Paste drug names and/or codes, one per line or comma-separated...&#10;&#10;Examples:&#10;amoxicillin&#10;B01AC06, paracetamol&#10;aspirin 100mg"></textarea>
+      <div class="search-actions">
+        <button class="btn-primary" onclick="runSearch()">🔍 Search</button>
+        <div class="mode-label">Match mode</div>
+        <div class="match-mode">
+          <button class="mode-btn active" id="mode-contains" onclick="setMode('contains')">Contains</button>
+          <button class="mode-btn" id="mode-word" onclick="setMode('word')">Whole word</button>
+          <button class="mode-btn" id="mode-exact" onclick="setMode('exact')">Exact match</button>
+        </div>
+      </div>
+    </div>
+    <div class="tip">💡 <strong>Contains</strong> — broad &nbsp;·&nbsp; <strong>Whole word</strong> — prevents partial hits &nbsp;·&nbsp; <strong>Exact</strong> — best for drug codes &nbsp;·&nbsp; Ctrl+Enter to search</div>
+  </div>
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <span class="results-title">Search Results</span>
+      <div class="results-meta">
+        <span class="pill pill-green" id="pillMatches">0 matches</span>
+        <span class="pill pill-blue" id="pillQueries">0 queries</span>
+        <span class="pill pill-yellow" id="pillNotFound">0 not found</span>
+        <button class="btn-export" onclick="exportResults()">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div class="query-summary">
+      <h4>Query Status</h4>
+      <div class="query-tags" id="queryTags"></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll" id="tableScroll"></div>
+    </div>
+  </div>
+</div>
+<footer>Upload the latest file monthly &nbsp;·&nbsp; For reference only &nbsp;·&nbsp; Not an official MOPH guideline</footer>
+<script>
+let drugData=[],columnNames=[],lastResults=[],matchMode='contains';
+const zone=document.getElementById('uploadZone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
+zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');if(e.dataTransfer.files[0])parseFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>parseFile(e.target.files[0]));
+document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.ctrlKey)runSearch();});
+function setMode(m){matchMode=m;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));document.getElementById('mode-'+m).classList.add('active');}
+function parseFile(file){if(!file)return;const reader=new FileReader();reader.onload=function(e){const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const json=XLSX.utils.sheet_to_json(ws,{defval:''});if(!json.length){alert('No data found');return;}columnNames=Object.keys(json[0]);drugData=json.map(row=>{const _cols={};columnNames.forEach(c=>_cols[c]=String(row[c]||'').toLowerCase().trim());return{...row,_cols};});document.getElementById('statusBar').classList.remove('hidden');document.getElementById('fileName').textContent=file.name;document.getElementById('fileStats').textContent=json.length.toLocaleString()+' drugs loaded';zone.style.display='none';};reader.readAsArrayBuffer(file);}
+function clearFile(){drugData=[];lastResults=[];document.getElementById('statusBar').classList.add('hidden');zone.style.display='block';document.getElementById('resultsSection').style.display='none';document.getElementById('fileInput').value='';}
+function escapeRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function matchRow(row,query){const q=query.toLowerCase().trim();if(!q)return false;return Object.values(row._cols).some(val=>{if(!val)return false;if(matchMode==='exact')return val===q;if(matchMode==='word'){try{const re=new RegExp('(?<![\\w-])'+escapeRe(q)+'(?![\\w-])','i');return re.test(val);}catch(e){return val.includes(q);}}return val.includes(q);});}
+function highlight(text,query){const safe=escapeHtml(String(text));if(!query)return safe;const q=escapeRe(query.toLowerCase().trim());try{let re;if(matchMode==='word')re=new RegExp('(?<![\\w-])('+q+')(?![\\w-])','gi');else if(matchMode==='exact')re=new RegExp('^('+q+')$','gi');else re=new RegExp('('+q+')','gi');return escapeHtml(String(text)).replace(re,'<mark>$1</mark>');}catch(e){return safe;}}
+function runSearch(){const input=document.getElementById('searchInput').value.trim();if(!input){alert('Enter at least one drug name or code');return;}if(!drugData.length){alert('Please upload a drug list file first');return;}const queries=[...new Set(input.split(/[\n,]+/).map(q=>q.trim()).filter(q=>q.length>0))];const rowMap=new Map();const queryHits={};queries.forEach(q=>queryHits[q]=0);drugData.forEach((row,idx)=>{const matched=queries.filter(q=>matchRow(row,q));if(matched.length>0){rowMap.set(idx,{row,matchedQueries:matched});matched.forEach(q=>queryHits[q]++);}});lastResults=[...rowMap.values()];renderResults(queries,queryHits,lastResults);}
+function renderResults(queries,queryHits,results){const section=document.getElementById('resultsSection');section.style.display='block';const notFoundCount=queries.filter(q=>queryHits[q]===0).length;document.getElementById('pillMatches').textContent=results.length.toLocaleString()+' match'+(results.length!==1?'es':'');document.getElementById('pillQueries').textContent=queries.length+' quer'+(queries.length===1?'y':'ies');document.getElementById('pillNotFound').textContent=notFoundCount+' not found';document.getElementById('queryTags').innerHTML=queries.map(q=>{const cnt=queryHits[q];return`<span class="query-tag ${cnt>0?'found':'not-found'}">${cnt>0?'✓':'✗'} ${escapeHtml(q)} <span class="count">${cnt}</span></span>`;}).join('');const scroll=document.getElementById('tableScroll');if(!results.length){scroll.innerHTML='<div class="no-results"><div class="icon">🔎</div><p>No matching drugs found.<br>Try <strong>Contains</strong> mode or check spelling.</p></div>';return;}let html='<table><thead><tr>';columnNames.forEach(c=>html+=`<th>${escapeHtml(c)}</th>`);html+='<th>Matched Query</th></tr></thead><tbody>';results.forEach(({row,matchedQueries})=>{const primaryQ=matchedQueries[0];html+='<tr>';columnNames.forEach(c=>{html+=`<td>${highlight(String(row[c]||''),primaryQ)}</td>`;});html+='<td class="matched-col">'+matchedQueries.map(q=>`<span class="matched-badge">🔍 ${escapeHtml(q)}</span>`).join('')+'</td></tr>';});html+='</tbody></table>';scroll.innerHTML=html;section.scrollIntoView({behavior:'smooth',block:'nearest'});}
+function exportResults(){if(!lastResults.length){alert('No results to export');return;}const clean=lastResults.map(({row,matchedQueries})=>{const obj={};columnNames.forEach(c=>obj[c]=row[c]);obj['Matched Query']=matchedQueries.join(', ');return obj;});const ws=XLSX.utils.json_to_sheet(clean);const cols=Object.keys(clean[0]);ws['!cols']=cols.map(k=>({wch:Math.min(50,Math.max(k.length+2,...clean.slice(0,100).map(r=>String(r[k]||'').length)))}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Drug Results');XLSX.writeFile(wb,'bulk_drug_results.xlsx');}
+</script>
+</body>
+</html>
